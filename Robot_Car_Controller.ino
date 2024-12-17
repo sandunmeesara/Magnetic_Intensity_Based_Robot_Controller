@@ -31,6 +31,7 @@ Adafruit_MPU6050 mpu;
 //---------------------------------Variables---------------------------------------------
 float desiredYaw = 0.0f; // Desired yaw value when moving forward or backward
 bool commands_given = false;
+float gyroOffsets[3] = {0, 0, 0};  // Gyroscope offsets for X, Y, Z
 
 
 //---------------------------------Functions---------------------------------------------
@@ -94,6 +95,11 @@ float getYaw() {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
+  // Apply sensor offsets
+  float gyroX = g.gyro.x - gyroOffsets[0];
+  float gyroY = g.gyro.y - gyroOffsets[1];
+  float gyroZ = g.gyro.z - gyroOffsets[2];
+
   // Calculate yaw from gyro data
   static float yaw = 0; // Persistent yaw
   static unsigned long lastTime = 0;
@@ -101,8 +107,30 @@ float getYaw() {
   float dt = (currentTime - lastTime) / 1000.0;
   lastTime = currentTime;
 
-  yaw += g.gyro.z * dt; // Integrate z-axis gyro rate
+  yaw += gyroZ * dt; // Integrate z-axis gyro rate
   return yaw;
+}
+
+// Calibrate the MPU6050 sensor
+void calibrateMPU() {
+  sensors_event_t a, g, temp;
+  const int sampleCount = 1000; // Number of samples for calibration
+
+  for (int i = 0; i < sampleCount; i++) {
+    mpu.getEvent(&a, &g, &temp);
+
+    // Accumulate raw readings
+    gyroOffsets[0] += g.gyro.x;
+    gyroOffsets[1] += g.gyro.y;
+    gyroOffsets[2] += g.gyro.z;
+
+    delay(5); // Short delay between samples
+  }
+
+  // Average the offsets
+  for (int i = 0; i < 3; i++) {
+    gyroOffsets[i] /= sampleCount;
+  }
 }
 
 // Direction correction function
@@ -115,7 +143,12 @@ void correctDirection(float currentYaw) {
     } else if (yawError < -180) {
       yawError += 360;
     }
-    /*Serial.print("desiredYaw: ");
+
+    //For Debugging Purposes
+    /*
+    Serial.print("currentYaw: ");
+    Serial.print(currentYaw);
+    Serial.print("desiredYaw: ");
     Serial.print(desiredYaw);
     Serial.print(" yawError: ");
     Serial.println(yawError);*/
@@ -183,6 +216,15 @@ void setup() {
   mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
   mpu.setGyroRange(MPU6050_RANGE_250_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_94_HZ);
+
+  //Calibrating MPU6050
+  Serial.println("Calibrating MPU6050...");
+  calibrateMPU();
+  Serial.println("Calibration Complete!");
+  Serial.print("Gyro Offsets: ");
+  Serial.print(gyroOffsets[0]); Serial.print(", ");
+  Serial.print(gyroOffsets[1]); Serial.print(", ");
+  Serial.println(gyroOffsets[2]);
 
 }
 
