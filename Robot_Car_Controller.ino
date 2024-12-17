@@ -14,7 +14,7 @@
 //Macros
 #define run_speed 100
 #define turn_speed 70
-#define correction_speed 150
+#define correction_speed 200
 #define threshold_angle 0.25
 
 //Pin Definition for Motor Controller
@@ -33,7 +33,6 @@ float desiredYaw = 0.0f; // Desired yaw value when moving forward or backward
 bool commands_given = false;
 float gyroOffsets[3] = {0, 0, 0};  // Gyroscope offsets for X, Y, Z
 
-
 //---------------------------------Functions---------------------------------------------
 // Motor control functions
 void moveForward() {
@@ -46,6 +45,7 @@ void moveForward() {
   digitalWrite(IN2, LOW);
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, LOW);
+  Serial.println("Moving Forward!");
 }
 
 void moveBackward() {
@@ -58,6 +58,7 @@ void moveBackward() {
   digitalWrite(IN2, HIGH);
   digitalWrite(IN3, LOW);
   digitalWrite(IN4, HIGH);
+  Serial.println("Moving Backward!");
 }
 
 void turnLeft() {
@@ -253,6 +254,7 @@ void loop() {
 
   // Get filtered orientation
   float yaw = getYaw();
+  //Serial.println(yaw);
 
   //call function to correct direction if it's going forward or backward
   correctDirection(yaw);
