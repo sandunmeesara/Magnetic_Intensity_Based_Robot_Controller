@@ -15,7 +15,7 @@
 #define run_speed 100
 #define turn_speed 70
 #define correction_speed 200
-#define threshold_angle 0.25
+#define threshold_angle 0.05
 
 //Pin Definition for Motor Controller
 #define ENA 9 // PWM Pin for motor speed (Right Motor)
@@ -139,18 +139,18 @@ void calibrateMPU() {
 void correctDirection(float currentYaw) {
   if(commands_given == true){
     float yawError = desiredYaw - currentYaw; // Calculate error between desired and current yaw
+    
     // Normalize yaw error to be between -180 and 180 degrees
-    if (yawError > 180) {
+    /*if (yawError > 180) {
       yawError -= 360;
     } else if (yawError < -180) {
       yawError += 360;
-    }
+    }*/
 
     //For Debugging Purposes
-    /*
-    Serial.print("currentYaw: ");
+    /*Serial.print("currentYaw: ");
     Serial.print(currentYaw);
-    Serial.print("desiredYaw: ");
+    Serial.print(" desiredYaw: ");
     Serial.print(desiredYaw);
     Serial.print(" yawError: ");
     Serial.println(yawError);*/
@@ -182,9 +182,19 @@ void correctDirection(float currentYaw) {
     } else {
       // No correction needed, move straight
       if (moving_direction == 1){
-        moveForward();
+        analogWrite(ENA, run_speed); // Max speed for Motor A
+        analogWrite(ENB, run_speed); // Max speed for Motor B
+        digitalWrite(IN1, HIGH);
+        digitalWrite(IN2, LOW);
+        digitalWrite(IN3, HIGH);
+        digitalWrite(IN4, LOW);
       }else{
-        moveBackward();
+        analogWrite(ENA, run_speed); // Max speed for Motor A
+        analogWrite(ENB, run_speed); // Max speed for Motor B
+        digitalWrite(IN1, LOW);
+        digitalWrite(IN2, HIGH);
+        digitalWrite(IN3, LOW);
+        digitalWrite(IN4, HIGH);
       }
     }
   }
