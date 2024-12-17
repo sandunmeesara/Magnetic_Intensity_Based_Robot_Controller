@@ -32,6 +32,7 @@ Adafruit_MPU6050 mpu;
 float desiredYaw = 0.0f; // Desired yaw value when moving forward or backward
 bool commands_given = false;
 float gyroOffsets[3] = {0, 0, 0};  // Gyroscope offsets for X, Y, Z
+bool moving_direction = 1; // 1: Forward, 0: Backward
 
 //---------------------------------Functions---------------------------------------------
 // Motor control functions
@@ -64,20 +65,20 @@ void moveBackward() {
 void turnLeft() {
   analogWrite(ENA, turn_speed); // Max speed for Motor A
   analogWrite(ENB, turn_speed); // Max speed for Motor B
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
   Serial.println("Turning left");
 }
 
 void turnRight() {
   analogWrite(ENA, turn_speed); // Max speed for Motor A
   analogWrite(ENB, turn_speed); // Max speed for Motor B
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
   Serial.println("Turning right");
 }
 
@@ -180,12 +181,11 @@ void correctDirection(float currentYaw) {
       }
     } else {
       // No correction needed, move straight
-      analogWrite(ENA, run_speed);
-      analogWrite(ENB, run_speed);
-      digitalWrite(IN1, HIGH);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, HIGH);
-      digitalWrite(IN4, LOW);
+      if (moving_direction == 1){
+        moveForward();
+      }else{
+        moveBackward();
+      }
     }
   }
 }
@@ -235,9 +235,11 @@ void loop() {
     //commands_given = false;
     char command = Serial.read();
     if (command == '1') {
+      moving_direction = 1;
       moveForward();
       commands_given = true;
     } else if (command == '2') {
+      moving_direction = 0;
       moveBackward();
       commands_given = true;
     } else if (command == '3') {
