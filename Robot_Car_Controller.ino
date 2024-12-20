@@ -14,8 +14,8 @@
 //Macros
 #define run_speed 100
 #define turn_speed 70
-#define correction_speed 200
-#define threshold_angle 0.05
+#define correction_speed 255
+#define threshold_angle 0.25
 
 //Pin Definition for Motor Controller
 #define ENA 9 // PWM Pin for motor speed (Right Motor)
