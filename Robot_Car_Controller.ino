@@ -13,7 +13,7 @@
 
 //Macros
 #define run_speed 100
-#define turn_speed 70
+#define turn_speed 100
 #define correction_speed 255
 #define threshold_angle 0.25
 
@@ -28,11 +28,13 @@
 //Object Creations
 Adafruit_MPU6050 mpu;
 
-//---------------------------------Variables---------------------------------------------
+//---------------------------------Global Variables---------------------------------------------
 float desiredYaw = 0.0f; // Desired yaw value when moving forward or backward
 bool commands_given = false;
 float gyroOffsets[3] = {0, 0, 0};  // Gyroscope offsets for X, Y, Z
 bool moving_direction = 1; // 1: Forward, 0: Backward
+String angle_string;
+float angle;
 
 //---------------------------------Functions---------------------------------------------
 // Motor control functions
@@ -200,6 +202,16 @@ void correctDirection(float currentYaw) {
   }
 }
 
+// Function for turn to a given angle
+void turn_to_the_angle(){
+  float _angle = getYaw();
+  while (_angle <= angle){
+    turnLeft();
+    delay(10);
+    stopMotors();
+    _angle = getYaw();
+  }
+}
 
 //------------------------------------------------Setup and Loop Functions--------------------------------------
 void setup() {
@@ -261,6 +273,15 @@ void loop() {
     } else if (command == '5') {
       stopMotors();
       commands_given = false;
+    } else if (command == '6') {
+      // Read the input as a string
+      String angle_string = Serial.readStringUntil('\n'); // Read until newline character
+      
+      // Convert the string to a float
+      angle = angle_string.toFloat();
+
+      turn_to_the_angle();
+      commands_given = true;
     }
   }
 
