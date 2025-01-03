@@ -14,8 +14,8 @@
 //Macros
 #define run_speed 100
 #define turn_speed 100
-#define correction_speed 255
-#define threshold_angle 0.25
+// #define correction_speed 255
+#define threshold_angle 0.05
 
 //Pin Definition for Motor Controller
 #define ENA 9 // PWM Pin for motor speed (Right Motor)
@@ -35,6 +35,14 @@ float gyroOffsets[3] = {0, 0, 0};  // Gyroscope offsets for X, Y, Z
 bool moving_direction = 1; // 1: Forward, 0: Backward
 String angle_string;
 float angle;
+
+// PID Related Variables
+int pos = 0;
+long prevT = 0;
+float eprev = 0;
+float eintegral = 0;
+float correction_speed_A = 0;
+float correction_speed_B = 0;
 
 //---------------------------------Functions---------------------------------------------
 // Motor control functions
@@ -115,7 +123,7 @@ float getYaw() {
   return yaw;
 }
 
-// Calibrate the MPU6050 sensor
+//Function to Calibrate the MPU6050 sensor
 void calibrateMPU() {
   sensors_event_t a, g, temp;
   const int sampleCount = 1000; // Number of samples for calibration
@@ -137,49 +145,107 @@ void calibrateMPU() {
   }
 }
 
-// Direction correction function
+// Function to Direction correction
 void correctDirection(float currentYaw) {
   if(commands_given == true){
     float yawError = desiredYaw - currentYaw; // Calculate error between desired and current yaw
+
+    // PID Controllling for correction_speed ---------------------------------------------------
     
-    // Normalize yaw error to be between -180 and 180 degrees
-    /*if (yawError > 180) {
-      yawError -= 360;
-    } else if (yawError < -180) {
-      yawError += 360;
-    }*/
+    // PID Constants
+    float kp = 5;
+    float kd = 0.25;
+    float ki = 0;
 
-    //For Debugging Purposes
-    /*Serial.print("currentYaw: ");
-    Serial.print(currentYaw);
-    Serial.print(" desiredYaw: ");
-    Serial.print(desiredYaw);
-    Serial.print(" yawError: ");
-    Serial.println(yawError);*/
+    // Time Difference 
+    long currT = micros();
+    long et = currT - prevT;
+    float deltaT = ((float)(currT - prevT))/1.0e6;
+    prevT = currT;
 
+    // Error
+    float e = desiredYaw - currentYaw;
+    
+    // Derivative 
+    float dedt = (e - eprev)/deltaT;
+
+    // Integral
+    eintegral = eintegral + e*deltaT;
+
+    // Control Signal
+    float u = kp*e*100 + kd*dedt + ki*eintegral;
+    // Serial.print("u : ");
+    // Serial.print(u);
+
+    // float correction_speed = fabs(u);
+    // // Motor Power
+    // if (correction_speed>255){
+    //   correction_speed = 255;
+    // }
+
+    if(u<0){
+      correction_speed_A = fabs(u) + 50;
+      correction_speed_B = fabs(u) - 50;
+      // correction_speed_B = 0;
+    }else{
+      correction_speed_A = fabs(u) - 50;
+      correction_speed_B = fabs(u) + 50;
+      // correction_speed_A = 0;
+    }
+
+    if (correction_speed_A>255){
+      correction_speed_A = 255;
+    }else if(correction_speed_A<0){
+      correction_speed_A = 0;
+    }
+
+    if (correction_speed_B>255){
+      correction_speed_B = 255;
+    }else if(correction_speed_B<0){
+      correction_speed_B = 0;
+    }
+
+    // Store the previous error
+    eprev = e;
+
+    // -------------------------------------------------------------------------------
+
+    
     // If yaw error is too large, adjust motors to correct the direction
-    if (abs(yawError) > threshold_angle) { // Threshold of x degrees for correction
-      Serial.print("yaw error: ");
+    if (abs(e) > threshold_angle) { // Threshold of x degrees for correction
+      Serial.print("u : ");
+      Serial.print(u);
+      Serial.print("--- e: ");
+      Serial.print(e);
+
+      Serial.print(" yawE: ");
       Serial.println(yawError);
-      Serial.println("Angle Correction Required!");
-      if (yawError > 0) {
+      // Serial.println("Angle Correction Required!");
+      if (u > 0) {
         // Rotate right if yawError is positive
-        analogWrite(ENA, correction_speed);
-        analogWrite(ENB, correction_speed);
+        analogWrite(ENA, correction_speed_A);
+        analogWrite(ENB, correction_speed_B);
         digitalWrite(IN1, HIGH);
         digitalWrite(IN2, LOW);
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, HIGH);
-        Serial.println("To correction Rotate right!");
+        Serial.print(" right:- speed_A:");
+        Serial.print(correction_speed_A);
+        Serial.print(" speed_B:");
+        Serial.println(correction_speed_B);
+        
       } else {
         // Rotate left if yawError is negative
-        analogWrite(ENA, correction_speed);
-        analogWrite(ENB, correction_speed);
+        analogWrite(ENA, correction_speed_A);
+        analogWrite(ENB, correction_speed_B);
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
-        Serial.println("To correction Rotate left!");
+        Serial.print(" left:- speed_A:");
+        Serial.print(correction_speed_A);
+        Serial.print(" speed_B:");
+        Serial.println(correction_speed_B);
       }
     } else {
       // No correction needed, move straight
@@ -210,6 +276,8 @@ void turn_to_the_angle(){
     delay(10);
     stopMotors();
     _angle = getYaw();
+    Serial.print("Angle:");
+    Serial.println(angle);
   }
 }
 
